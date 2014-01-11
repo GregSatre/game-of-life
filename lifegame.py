@@ -6,9 +6,9 @@ WINDOW_HEIGHT = 600
 
 FPS = 5
 
-CELL_SIZE = 20
-assert WINDOW_WIDTH%CELL_SIZE == 0 
-assert WINDOW_HEIGHT%CELL_SIZE == 0 
+CELL_SIZE = 40
+assert WINDOW_WIDTH%CELL_SIZE == 0
+assert WINDOW_HEIGHT%CELL_SIZE == 0
 CELL_WIDTH = WINDOW_WIDTH//CELL_SIZE
 CELL_HEIGHT = WINDOW_HEIGHT//CELL_SIZE
 
@@ -36,7 +36,7 @@ def main():
 def initializeGame():
     """Checks for user mouse clicks and updates cell_positions accordingly. Returns game's initial state"""
     # Positions of upper left corners of cells on the grid. List of tuples
-    cell_positions = []
+    cell_positions = set()
     # Main game loop
     while True:
         # Event handling loop
@@ -49,13 +49,12 @@ def initializeGame():
                 cell_y = mouse_y - mouse_y%CELL_HEIGHT
                 cell_pos = (cell_x, cell_y)
                 if cell_pos in cell_positions:
-                    i = cell_positions.index(cell_pos)
-                    del cell_positions[i]
+                    cell_positions.remove(cell_pos)
                 else:
-                    cell_positions.append(cell_pos)
+                    cell_positions.add(cell_pos)
             elif event.type == KEYDOWN:
                 if event.key == K_RETURN:
-                    return cell_positions 
+                    return cell_positions
                 elif event.key == K_ESCAPE:
                     terminate()
 
@@ -75,6 +74,8 @@ def runGame(cell_positions):
             elif event.type == KEYDOWN:
                 if event.key == K_ESCAPE:
                     terminate()
+                elif event.key == K_r:
+                    resetGame()
 
         cell_positions = updateCells(cell_positions)
 
@@ -83,6 +84,12 @@ def runGame(cell_positions):
         drawCells(cell_positions)
         pygame.display.update()
         FPSCLOCK.tick(FPS)
+
+def resetGame():
+    # Get initial cell positions
+    cell_positions = initializeGame()
+    # Run game on those positions
+    runGame(cell_positions)
 
 def updateCells(cell_positions):
     """Use rules of the game of life to update the cell positions"""
@@ -94,13 +101,12 @@ def updateCells(cell_positions):
     for cell in cell_positions:
         # Get adjacent squares
         neighbours_dict = cellNeighbours(cell)
-        live_neighbours = []
+        number_live_neighbours = 0
         # Check which of these corresponds to another living cell
         for square in neighbours_dict.values():
             possible_future_cells.add(square)
             if square in cell_positions:
-                live_neighbours.append(square)
-        number_live_neighbours = len(live_neighbours)
+                number_live_neighbours+=1
 
         # Any live cell with fewer than two live neighbours dies, as if caused by under-population
         if number_live_neighbours<2:
@@ -118,13 +124,13 @@ def updateCells(cell_positions):
         for square in cell_candidate_neighbours:
             if square in cell_positions:
                 count+=1
-        if count == 3 and inWindow(cell_candidate):
+        if count == 3:
             cells_add.add(cell_candidate)
     # Update cell_positions by removing dead cells and adding new-born cells
     for cell in cells_remove:
         cell_positions.remove(cell)
     for cell in cells_add:
-        cell_positions.append(cell)
+        cell_positions.add(cell)
     # Return the update live cell list
     return cell_positions
 
@@ -139,6 +145,12 @@ def cellNeighbours((cell_x,cell_y)):
     dict["neighbour_up_right"] = (cell_x + CELL_WIDTH, cell_y - CELL_HEIGHT)
     dict["neighbour_down_left"] = (cell_x - CELL_WIDTH, cell_y + CELL_HEIGHT)
     dict["neighbour_down_right"] = (cell_x + CELL_WIDTH, cell_y + CELL_HEIGHT)
+    keys_to_delete = []
+    for key,value in dict.iteritems():
+        if not inWindow(value):
+           keys_to_delete.append(key)
+    for key in keys_to_delete:
+        del dict[key]
     return dict
 
 def drawGrid():
